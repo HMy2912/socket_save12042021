@@ -1,45 +1,151 @@
 import socket
+import requests
+import json
+import os
 import threading
-
+import hashlib
 HEADER = 64
+# Choose a port that is free
 PORT = 5050
-SERVER = socket.gethostbyname(socket.gethostname())
-ADDR = (SERVER, PORT)
-FORMAT = 'utf-8'
 DISCONNECT_MESSAGE = "!DISCONNECT"
+# An IPv4 address is obtained
+# for the server.
+SERVER = socket.gethostbyname(socket.gethostname())
 
+# Address is stored as a tuple
+ADDRESS = (SERVER, PORT)
+
+# the format in which encoding
+# and decoding will occur
+FORMAT = "utf-8"
+
+# Lists that will contains
+# all the clients connected to
+# the server and their names.
+clients, names = [], []
+
+# Create a new socket for
+# the server
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-server.bind(ADDR)
 
+# bind the address of the
+# server to the socket
+try:
+	server.bind(ADDRESS)
+except socket.error as e:
+	print(str(e))
 
-def handle_Client(conn, addr):
-    print(f"[NEW CONNECTION] {addr} connected.")
+HashTable = {}
 
-    connected = True
-    while connected:
-        msg_length = conn.recv(HEADER).decode(FORMAT)
-        if msg_length :
-            msg_length = int(msg_length)
-            msg = conn.recv(msg_length).decode(FORMAT)
-            if msg == DISCONNECT_MESSAGE:
-                connected = False
+try:
+	with open('data.json', 'r') as JSON:
+	   HashTable = json.loads(JSON.read())
+except:
+	print("UNABLE TO LOAD DATA.JSON\n")
 
-            print(f"[{addr}] {msg}")
-            conn.send("Message received".encode(FORMAT))
-    
-    conn.close()
+def sendCommand(conn):
+	conn.send("USERNAME".encode(FORMAT))
+	# 1024 represents the max amount of data that can be received (bytes)
+	name = conn.recv(1024).decode(FORMAT)
+			
+	conn.send("PASSWORD".encode(FORMAT))
+	# password = conn.recv(1024).decode(FORMAT)
+	password = conn.recv(1024).decode(FORMAT)
+	# append the name and client # to the respective list
+			
+	# password = hashlib.sha256(str.encode(password)).hexdigest() # Password hash using SHA256
 
+	print(f"USERNAME is: {name}")
+	print(f"PASSWORD is: {password}")
+	# broadcast message
+	# broadcastMessage(f"{name} has joined the chat!".encode(FORMAT))
+			
+	conn.send("CONNECTED!!".encode(FORMAT))
 
+	# password = hashlib.sha256(str.encode(password)).hexdigest() # Password hash using SHA256
+	# if username in HashTable:
+	#  	if HashTable[username] == password:
+	#  		conn.send("LOGIN SUCCESS".encode(FORMAT))
+	#  		print("Connected: ", username)
+	#  	else:
+	#  		conn.send("LOGIN FAIL".encode(FORMAT))
+	#  		print("Connection denied: ", username)
+	# else:
+	#  	conn.send("USER NOT FOUND".encode(FORMAT))
 
-def start():
-    server.listen()
-    print(f"[LISTENING] Server is listening on {SERVER}")
-    while True:
-        conn, addr = server.accept()
-        thread = threading.Thread(target = handle_Client, args=(conn, addr))
-        thread.start()
-        print(f"[ACTIVE CONNECTIONS] {threading.activeCount() - 1}")
+# function to start the connection
+def startChat():
+	print("SERVER now is on " + SERVER)
+	
+	# listening for connections
+	server.listen()
+	
+	while True:
+		try:
+			# accept connections and returns
+			# a new connection to the client
+			# and the address bound to it
+			conn, addr = server.accept()
+			
+			sendCommand(conn)
+							
+			# Start the handling thread
+			thread = threading.Thread(target = handle, args = (conn, addr))
+			thread.start()
 
+			
 
-print("[STARTING] server is starting...")
-start()
+			# no. of clients connected
+			# to the server
+			print(f"ACTIVE CONNECTIONS: {threading.activeCount()-1}")
+		except:
+			print("Error...")
+
+# method to handle the
+# incoming messages
+
+def handle(conn, addr):
+	
+	print(f"NEW CONNECTION: {addr}")
+	connected = True
+	
+	while connected:
+		# recieve message
+		message = conn.recv(1024).decode(FORMAT)
+		if message == DISCONNECT_MESSAGE:
+			connected = False
+			print(f"{DISCONNECT_MESSAGE}, {addr}")
+			break
+		elif message == 'LIST ALL':
+			print("LIST ALL")
+			try:
+				apiRequest = requests.get("https://livescore-api.com/api-client/scores/live.json?key=kKPYTYE3Opd7BjGs&secret=k2EJGillATpPJg340T3URHYF7bNJvubQ")
+				ScoreData = json.loads(apiRequest.content)
+				for obj in ScoreData['data']['match']:
+					conn.send(f"{obj['competition_id']} + {obj['ht_score']} + {obj['ft_score']} + {obj['status']} \n".encode(FORMAT))
+			except Exception as e:
+				api = "Error..."
+		else:
+			# print(message)
+			# broadcast message
+			try:
+				conn.send(message.encode(FORMAT))
+			except:
+				print("A error occured!")
+				while not connected:
+					try:
+						conn.connect(addr)
+						connected = True
+					except socket.error as e:
+						print(e)
+				break
+		
+	# close the connection
+	conn.close()
+
+# method for broadcasting
+# messages to the each clients
+
+# call the method to
+# begin the communication
+startChat()
