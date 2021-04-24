@@ -60,18 +60,22 @@ def sendCommand(conn):
 	# broadcast message
 	# broadcastMessage(f"{name} has joined the chat!".encode(FORMAT))
 			
-	conn.send("CONNECTED!!".encode(FORMAT))
-
-	# password = hashlib.sha256(str.encode(password)).hexdigest() # Password hash using SHA256
-	# if username in HashTable:
-	#  	if HashTable[username] == password:
-	#  		conn.send("LOGIN SUCCESS".encode(FORMAT))
-	#  		print("Connected: ", username)
-	#  	else:
-	#  		conn.send("LOGIN FAIL".encode(FORMAT))
-	#  		print("Connection denied: ", username)
-	# else:
-	#  	conn.send("USER NOT FOUND".encode(FORMAT))
+	# conn.send("CONNECTED!!".encode(FORMAT))
+	try:
+		password = hashlib.sha256(str.encode(password)).hexdigest() # Password hash using SHA256
+		print("HASH DONE")
+		if name in HashTable:
+			if HashTable[name] == password:
+				conn.send("LOGIN SUCCESS".encode(FORMAT))
+				print("Connected: ", name)
+			else:
+				conn.send("LOGIN FAIL".encode(FORMAT))
+				print("Connection denied: ", name)
+		else:
+			conn.send("USER NOT FOUND".encode(FORMAT))
+			print("User not found: ", name)
+	except:
+		print('LOGIN VERIFY FAIL')
 
 # function to start the connection
 def startChat():
@@ -88,18 +92,17 @@ def startChat():
 			conn, addr = server.accept()
 			
 			sendCommand(conn)
-							
 			# Start the handling thread
 			thread = threading.Thread(target = handle, args = (conn, addr))
 			thread.start()
+				# no. of clients connected
+				# to the server
+			print(f"ACTIVE CONNECTIONS: {threading.activeCount()-1}")
 
 			
 
-			# no. of clients connected
-			# to the server
-			print(f"ACTIVE CONNECTIONS: {threading.activeCount()-1}")
 		except:
-			print("Error...")
+			print("Send Error...")
 
 # method to handle the
 # incoming messages
@@ -116,13 +119,19 @@ def handle(conn, addr):
 			connected = False
 			print(f"{DISCONNECT_MESSAGE}, {addr}")
 			break
-		elif message == 'LIST ALL':
-			print("LIST ALL")
+		elif message == 'LIVE SCORE':
+			print("LIVE SCORE")
 			try:
 				apiRequest = requests.get("https://livescore-api.com/api-client/scores/live.json?key=kKPYTYE3Opd7BjGs&secret=k2EJGillATpPJg340T3URHYF7bNJvubQ")
 				ScoreData = json.loads(apiRequest.content)
 				for obj in ScoreData['data']['match']:
-					conn.send(f"{obj['competition_id']} + {obj['ht_score']} + {obj['ft_score']} + {obj['status']} \n".encode(FORMAT))
+					# conn.send(f"{obj['+id']} + {obj['ht_score']} + {obj['ft_score']} + {obj['status']} \n".encode(FORMAT))
+					conn.send("{:<8} {:<8} {:<20} {:<8} {:<20} \n".format(obj['id'], obj['status'], obj['home_name'], obj['score'], obj['away_name']).encode(FORMAT))
+
+		# 		print("{:<8} {:<20}".format('USER','PASSWORD'))
+        # for k, v in HashTable.items():
+        #     label, num = k,v
+        #     print("{:<8} {:<20}".format(label, num))
 			except Exception as e:
 				api = "Error..."
 		else:

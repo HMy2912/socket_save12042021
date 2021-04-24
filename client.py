@@ -39,17 +39,25 @@ class GUI:
 		self.entryUsername.place(relwidth = 0.4, relheight = 0.12, relx = 0.4, rely = 0.2)
 		self.entryPassword = Entry(self.signup, font = "Helvetica 14", show = "*")
 		self.entryPassword.place(relwidth = 0.4, relheight = 0.12, relx = 0.4, rely = 0.4)
-			
+		
+		global registryUsername
+		global registryPassword
+
+		registryUsername = self.entryUsername.get()
+		registryPassword = self.entryPassword.get()
+	
 			# set the focus of the cursor
 		self.entryUsername.focus()
 		self.entryPassword.focus()
 			
 			# create a Continue Button # along with action
-		self.continueBtn = Button(self.signup, text = "CONTINUE", font = "Helvetica 14 bold", 
-			command = self.login)
+		self.continueBtn = Button(self.signup, text = "CONTINUE", font = "Helvetica 14 bold", command = self.login)
 		self.continueBtn.place(relx = 0.5, rely = 0.7, anchor = CENTER)
 
 	def login(self):
+
+		# if registryUsername != '':
+
 		# login window
 		self.login = Toplevel()
 		# set the title
@@ -65,8 +73,6 @@ class GUI:
 		self.labelPassword = Label(self.login, text = "Password: ", font = "Helvetica 12")
 		self.labelPassword.place(relheight = 0.2, relx = 0.15, rely = 0.4)
 
-		global entryUsername
-		global entryPassword
 			# create a entry box for # typing the message
 		self.entryUsername = Entry(self.login, font = "Helvetica 14")
 		self.entryUsername.place(relwidth = 0.4, relheight = 0.12, relx = 0.4, rely = 0.2)
@@ -108,20 +114,51 @@ class GUI:
 		self.signUpBtn.place(relx = 0.5, rely = 0.6, anchor = CENTER)
 		self.Window.mainloop()
 
+	def targetReceive(self, name, password):
+		flag = 0
+		self.name = name
+		self.password = password
+		while True:
+			try:
+				message = client.recv(1024).decode(FORMAT)
+				# print(message)
+				if message == "USERNAME":
+				 	client.send(self.name.encode(FORMAT))
+				elif message == "PASSWORD":
+				 	client.send(self.password.encode(FORMAT))
+				elif message == 'LOGIN SUCCESS':
+					if flag == 0:
+						self.layout(name, password)
+						flag += 1
+					self.receive(message)
+				elif message == 'LOGIN FAIL':
+					self.login()
+				elif message == 'USER NOT FOUND':
+					self.signup()
+				else: 
+					self.receive(message)
+			except:
+				# an error will be printed on the command line or console if there's an error
+				print(f"TR {DISCONNECT_MESSAGE}")
+				client.send(DISCONNECT_MESSAGE.encode(FORMAT))
+				client.close()
+				break
+
 	def goAhead(self, name, password):
 		self.login.destroy()
-		self.layout(name, password)
+		# self.layout(name, password)
 
 		# the thread to receive messages
-		rcv = threading.Thread(target=self.receive)
+		rcv = threading.Thread(target = lambda : self.targetReceive(name, password))
 		rcv.start()
+
+		
 		# client.send(name.encode(FORMAT))
 		# client.send(password.encode(FORMAT))
 
 	# The main layout of the chat
 	def layout(self, name, password):
-		self.name = name
-		self.password = password
+
 
 		# to show chat window
 		self.Window.deiconify()
@@ -156,7 +193,7 @@ class GUI:
 		self.buttonMsg.place(relx = 0.77,rely = 0.00001,relheight = 0.06,relwidth = 0.22)
 		self.textCons.config(cursor = "arrow")
 		#
-		self.quitBtn = Button(self.Window,text = "LIST ALL",font = "Helvetica 10 bold",width = 20,bg = "#ABB2B9",command = self.sendListAll)
+		self.quitBtn = Button(self.Window,text = "LIVE SCORE",font = "Helvetica 10 bold",width = 20,bg = "#ABB2B9",command = self.sendListAll)
 		self.quitBtn.place(relx = 0.5, rely = 0.92, anchor = CENTER, relwidth=0.97)
 		#
 		self.listallBtn = Button(self.Window, text = "DISCONNECT", font = "Helvetica 10 bold",width = 20,bg = "#ABB2B9",command = self.Window.quit)
@@ -170,7 +207,7 @@ class GUI:
 		self.textCons.config(state = DISABLED)
 
 	def sendListAll(self):
-		client.send("LIST ALL".encode(FORMAT))
+		client.send("LIVE SCORE".encode(FORMAT))
 	# function to basically start the thread for sending messages
 	def sendButton(self, msg):
 		self.textCons.config(state = DISABLED)
@@ -181,28 +218,26 @@ class GUI:
 		snd.start()
 
 	# function to receive messages
-	def receive(self):
-		while True:
-			try:
-				message = client.recv(1024).decode(FORMAT)
+	def receive(self, message):
+		try:
+				# message = client.recv(1024).decode(FORMAT)
 				
-				if message == "USERNAME":
-				 	client.send(self.name.encode(FORMAT))
-				elif message == "PASSWORD":
-				 	client.send(self.password.encode(FORMAT))
-				else:
-					# self.layout(name, password)
-					self.textCons.config(state = NORMAL)
-					self.textCons.insert(END, message + "\n")
-						
-					self.textCons.config(state = DISABLED)
-					self.textCons.see(END)
-			except:
+				# if message == "USERNAME":
+				#  	client.send(self.name.encode(FORMAT))
+				# elif message == "PASSWORD":
+				#  	client.send(self.password.encode(FORMAT))
+				# else:
+				# 	# self.layout(name, password)
+			self.textCons.config(state = NORMAL)
+			self.textCons.insert(END, message + "\n")
+					
+			self.textCons.config(state = DISABLED)
+			self.textCons.see(END)
+		except:
 				# an error will be printed on the command line or console if there's an error
-				print(f"{DISCONNECT_MESSAGE}")
-				client.send(DISCONNECT_MESSAGE.encode(FORMAT))
-				client.close()
-				break
+			print(f"SM {DISCONNECT_MESSAGE}")
+			client.send(DISCONNECT_MESSAGE.encode(FORMAT))
+			client.close()
 		
 	# function to send messages
 	def sendMessage(self):
