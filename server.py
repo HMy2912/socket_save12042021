@@ -122,7 +122,7 @@ def handle(conn, addr):
 		elif message == 'LIVE SCORE':
 			print("LIVE SCORE")
 			try:
-				apiRequest = requests.get("https://livescore-api.com/api-client/scores/live.json?key=kKPYTYE3Opd7BjGs&secret=k2EJGillATpPJg340T3URHYF7bNJvubQ")
+				apiRequest = requests.get("https://livescore-api.com/api-client/scores/live.json?key=lQNUCP8IbJHbBeIe&secret=1l6a2MSLYLk0ry8MpWG1MPKYzr9aGRpH")
 				ScoreData = json.loads(apiRequest.content)
 				for obj in ScoreData['data']['match']:
 					# conn.send(f"{obj['+id']} + {obj['ht_score']} + {obj['ft_score']} + {obj['status']} \n".encode(FORMAT))
